@@ -23,7 +23,7 @@ builder.Services.AddRateLimiter(_ =>
     {
         options.PermitLimit = myOptions.PermitLimit;
         options.Window = TimeSpan.FromSeconds(myOptions.Window);
-        options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        //options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         //options.QueueLimit = myOptions.QueueLimit;
     });
 
@@ -46,7 +46,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseRateLimiter();
 
-app.MapGet("/FixedWindow", () => Results.Ok($"Hello"))
+app.MapGet("/FixedWindow", () => Results.Ok($"Fixed Window Limit"))
                            .RequireRateLimiting("fixed");
 
 app.UseHttpsRedirection();
