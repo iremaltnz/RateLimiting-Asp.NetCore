@@ -1,6 +1,6 @@
 ﻿namespace RateLimiting_Asp.NetCore.Middleware.RateLimitOptions
 {
-    public class FixedWindowOption
+    public class RateLimitOption
     {
         public const string MyRateLimit = "MyRateLimit";
         public int PermitLimit { get; set; } = 5;
