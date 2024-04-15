@@ -15,7 +15,9 @@ builder.Services.AddSwaggerGen();
 
 var myOptions = new FixedWindowOption();
 builder.Configuration.GetSection(FixedWindowOption.MyRateLimit).Bind(myOptions);
+
 var fixedPolicy = "fixed";
+var slidingPolicy = "sliding";
 
 builder.Services.AddRateLimiter(_ =>
 {
@@ -35,6 +37,23 @@ builder.Services.AddRateLimiter(_ =>
     };
 });
 
+builder.Services.AddRateLimiter(_ =>
+{
+    _.AddSlidingWindowLimiter(slidingPolicy, options =>
+    {
+        options.PermitLimit = myOptions.PermitLimit;
+        options.Window = TimeSpan.FromSeconds(myOptions.Window);
+        options.SegmentsPerWindow = myOptions.SegmentsPerWindow;
+    });
+
+    _.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = 429;
+        await context.HttpContext.Response.WriteAsync($"Too many requests. Please try later again...", cancellationToken: token);
+
+    };
+}) ;
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -47,7 +66,10 @@ if (app.Environment.IsDevelopment())
 app.UseRateLimiter();
 
 app.MapGet("/FixedWindow", () => Results.Ok($"Fixed Window Limit"))
-                           .RequireRateLimiting("fixed");
+                           .RequireRateLimiting(fixedPolicy);
+
+app.MapGet("/SlidingWindow", () => Results.Ok($"Sliding Window Limit"))
+                           .RequireRateLimiting(slidingPolicy);
 
 app.UseHttpsRedirection();
 
