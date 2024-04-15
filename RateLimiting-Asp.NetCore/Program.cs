@@ -19,6 +19,7 @@ builder.Configuration.GetSection(RateLimitOption.MyRateLimit).Bind(myOptions);
 var fixedPolicy = "fixed";
 var slidingPolicy = "sliding";
 var tokenPolicy = "token";
+var concurrencyPolicy = "Concurrency";
 
 
 builder.Services.AddRateLimiter(_ =>
@@ -74,6 +75,21 @@ builder.Services.AddRateLimiter(_ =>
 
 }) ;
 
+builder.Services.AddRateLimiter(_ =>
+{
+    _.AddConcurrencyLimiter(policyName: concurrencyPolicy, options =>
+    {
+        options.PermitLimit = myOptions.PermitLimit;
+    });
+
+    _.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = 429;
+        await context.HttpContext.Response.WriteAsync($"Too many requests. Please try later again...", cancellationToken: token);
+
+    };
+});
+
 
 var app = builder.Build();
 
@@ -94,6 +110,9 @@ app.MapGet("/SlidingWindow", () => Results.Ok($"Sliding Window Limit"))
 
 app.MapGet("/TokenBucket", () => Results.Ok($"Token Bucket Limit"))
                            .RequireRateLimiting(tokenPolicy);
+
+app.MapGet("/Concurrency", () => Results.Ok($"Concurrency Limit"))
+                           .RequireRateLimiting(concurrencyPolicy);
 
 app.UseHttpsRedirection();
 
