@@ -13,11 +13,13 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-var myOptions = new FixedWindowOption();
-builder.Configuration.GetSection(FixedWindowOption.MyRateLimit).Bind(myOptions);
+var myOptions = new RateLimitOption();
+builder.Configuration.GetSection(RateLimitOption.MyRateLimit).Bind(myOptions);
 
 var fixedPolicy = "fixed";
 var slidingPolicy = "sliding";
+var tokenPolicy = "token";
+
 
 builder.Services.AddRateLimiter(_ =>
 {
@@ -54,6 +56,25 @@ builder.Services.AddRateLimiter(_ =>
     };
 }) ;
 
+builder.Services.AddRateLimiter(_ =>
+{ 
+   _.AddTokenBucketLimiter(policyName: tokenPolicy, options =>
+    {
+        options.TokenLimit = myOptions.TokenLimit;
+        options.ReplenishmentPeriod = TimeSpan.FromSeconds(myOptions.ReplenishmentPeriod);
+        options.TokensPerPeriod = myOptions.TokensPerPeriod;
+    });
+
+    _.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = 429;
+        await context.HttpContext.Response.WriteAsync($"Too many requests. Please try later again...", cancellationToken: token);
+
+    };
+
+}) ;
+
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -70,6 +91,9 @@ app.MapGet("/FixedWindow", () => Results.Ok($"Fixed Window Limit"))
 
 app.MapGet("/SlidingWindow", () => Results.Ok($"Sliding Window Limit"))
                            .RequireRateLimiting(slidingPolicy);
+
+app.MapGet("/TokenBucket", () => Results.Ok($"Token Bucket Limit"))
+                           .RequireRateLimiting(tokenPolicy);
 
 app.UseHttpsRedirection();
 
